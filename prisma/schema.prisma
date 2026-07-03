@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  householdMemberships HouseholdMember[]
+  createdItems         Item[]
+
+  @@map("users")
+}
+
+model Household {
+  id         String   @id @default(uuid())
+  name       String
+  inviteCode String   @unique @map("invite_code")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  members HouseholdMember[]
+  lists   ShoppingList[]
+
+  @@map("households")
+}
+
+model HouseholdMember {
+  id          String   @id @default(uuid())
+  householdId String   @map("household_id")
+  userId      String   @map("user_id")
+  role        Role     @default(MEMBER)
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, userId])
+  @@map("household_members")
+}
+
+model ShoppingList {
+  id          String    @id @default(uuid())
+  householdId String    @map("household_id")
+  name        String
+  emoji       String?
+  isCompleted Boolean   @default(false) @map("is_completed")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  items     Item[]
+
+  @@map("shopping_lists")
+}
+
+model Item {
+  id           String   @id @default(uuid())
+  listId       String   @map("list_id")
+  addedById    String   @map("added_by_id")
+  name         String
+  brand        String?
+  barcode      String?
+  imageUrl     String?  @map("image_url")
+  category     String?
+  quantity     Int      @default(1)
+  unit         String?
+  price        Decimal? @db.Decimal(10, 2)
+  notes        String?
+  isChecked    Boolean  @default(false) @map("is_checked")
+  checkedAt    DateTime? @map("checked_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  list    ShoppingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  addedBy User         @relation(fields: [addedById], references: [id])
+
+  @@map("items")
+}
+
+enum Role {
+  OWNER
+  MEMBER
+}
